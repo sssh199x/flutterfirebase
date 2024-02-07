@@ -15,10 +15,21 @@ class _HomeScreenState extends State<HomeScreen> {
     // TODO: implement initState
     super.initState();
     notificationServices.requestNotificationPermission(context);
+    notificationServices.isTokenRefresh();
+    notificationServices.getDeviceToken().then((value) {
+      print('Device Token:');
+      print(value);
+    });
   }
 
+// exAAmliwTwCHc8PtP1SUht:APA91bEfV-qWv-0fLKnmfekjFtCfZg8X0vpSBBM4RP0GXgDovwOGE3Bx20FqwrNT03XYKmcjwMaAMO-VnTVu7Wni-0oEsTTtSGFm4f-LFG3Pxo_7H-Ba-Bl3T0SlBhjJFrruk9yamLF5
   @override
   Widget build(BuildContext context) {
-    return const Scaffold();
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        title: const Text('Flutter Notifications'),
+      ),
+    );
   }
 }
