@@ -2,6 +2,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:app_settings/app_settings.dart';
 
+// Link to prevent auto initialization: https://firebase.google.com/docs/cloud-messaging/flutter/client#prevent-auto-init
+// When an FCM registration token is generated, the library uploads the identifier and configuration data to Firebase. If you prefer to prevent token autogeneration, disable auto-initialization at build time.
+
+// Re-enable FCM auto-init at runtime : To enable auto-init for a specific app instance, call setAutoInitEnabled():
+// await FirebaseMessaging.instance.setAutoInitEnabled(true);
 class NotificationServices {
   // To get a new instance of the FirebaseMessaging
   FirebaseMessaging messaging = FirebaseMessaging.instance;
@@ -30,6 +35,23 @@ class NotificationServices {
       print('user permission denied');
       _showSettingsDialog(context);
     }
+  }
+
+  // This works for both ios and android
+  Future<String> getDeviceToken() async {
+    // Returns the default FCM token for this device.On web, a [vapidKey] is required.
+    String? token = await messaging.getToken();
+    return token!;
+  }
+
+  void isTokenRefresh() async {
+    // Fires when a new FCM token is generated.
+    messaging.onTokenRefresh.listen((event) {
+      event.toString();
+      print('Token Refreshed');
+    }).onError((error) {
+      print('Error for not getting  refreshed token: $error');
+    });
   }
 
   // Show dialog to guide the user to open settings
