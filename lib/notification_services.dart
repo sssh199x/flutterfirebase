@@ -1,6 +1,10 @@
+import 'dart:io';
+import 'dart:math';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:app_settings/app_settings.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 // Link to prevent auto initialization: https://firebase.google.com/docs/cloud-messaging/flutter/client#prevent-auto-init
 // When an FCM registration token is generated, the library uploads the identifier and configuration data to Firebase. If you prefer to prevent token autogeneration, disable auto-initialization at build time.
@@ -9,7 +13,86 @@ import 'package:app_settings/app_settings.dart';
 // await FirebaseMessaging.instance.setAutoInitEnabled(true);
 class NotificationServices {
   // To get a new instance of the FirebaseMessaging
+
   FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  // To get a new instance of the Flutter Local Notifications Plugin
+
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  void initLocalNotifications(RemoteMessage message) async {
+    // Constructs an instance of [AndroidInitializationSettings].
+
+    var androidInitializationSettings =
+        const AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    // Constructs an instance of [DarwinInitializationSettings].
+
+    var iosInitializationSettings = const DarwinInitializationSettings();
+
+    // Constructs an instance of [InitializationSettings].
+
+    var initializationSetting = InitializationSettings(
+        android: androidInitializationSettings, iOS: iosInitializationSettings);
+
+    // Initializes the plugin.Call this method on application before using the plugin further.
+
+    await _flutterLocalNotificationsPlugin.initialize(initializationSetting,
+        onDidReceiveNotificationResponse: (payload) {});
+  }
+
+  Future<void> showNotifications(RemoteMessage message) async {
+    // Android Notification Channel
+    AndroidNotificationChannel channel = const AndroidNotificationChannel(
+        // high_importance_level is the value that i have used in the metadata parameter of androidmanifest file so i am using it as the channel id.
+        "high_importance_level",
+        'High Importance Channel',
+        // If this is set to anyother than max then the notifications wouldnt be shown in the UI
+        importance: Importance.max,
+        description: 'Your Channel Description');
+    // Android Notification Details
+    AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+      channel.id.toString(),
+      channel.name.toString(),
+      channelDescription: channel.description,
+      // make sure this is only set to high
+      importance: Importance.high,
+      priority: Priority.high,
+      ticker: 'ticker',
+    );
+
+    DarwinNotificationDetails iosNotificationDetails =
+        const DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    NotificationDetails notificationDetails = NotificationDetails(
+        android: androidNotificationDetails, iOS: iosNotificationDetails);
+    Future.delayed(Duration.zero, () {
+      _flutterLocalNotificationsPlugin.show(
+          0,
+          message.notification!.title.toString(),
+          message.notification!.body.toString(),
+          notificationDetails);
+    });
+  }
+
+  void firebaseInit() {
+    FirebaseMessaging.onMessage.listen((message) {
+      if (kDebugMode) {
+        print(message.notification!.title.toString());
+        print(message.notification!.body.toString());
+      }
+      if (Platform.isAndroid) {
+        initLocalNotifications(message);
+        showNotifications(message);
+      }
+    });
+  }
 
   void requestNotificationPermission(BuildContext context) async {
     // Prompts the user for notification permissions.
