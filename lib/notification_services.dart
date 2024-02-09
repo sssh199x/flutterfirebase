@@ -1,10 +1,10 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutterfirebase/message_screen.dart';
 
 // Link to prevent auto initialization: https://firebase.google.com/docs/cloud-messaging/flutter/client#prevent-auto-init
 // When an FCM registration token is generated, the library uploads the identifier and configuration data to Firebase. If you prefer to prevent token autogeneration, disable auto-initialization at build time.
@@ -21,7 +21,8 @@ class NotificationServices {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  void initLocalNotifications(RemoteMessage message) async {
+  void initLocalNotifications(
+      BuildContext context, RemoteMessage message) async {
     // Constructs an instance of [AndroidInitializationSettings].
 
     var androidInitializationSettings =
@@ -39,11 +40,43 @@ class NotificationServices {
     // Initializes the plugin.Call this method on application before using the plugin further.
 
     await _flutterLocalNotificationsPlugin.initialize(initializationSetting,
-        onDidReceiveNotificationResponse: (payload) {});
+        onDidReceiveNotificationResponse: (payload) {
+      _handleMessages(context, message);
+    });
+  }
+
+  void _handleMessages(BuildContext context, RemoteMessage message) {
+    if (message.data['type'] == 'message') {
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MessageScreen(id: message.data['id']),
+          ));
+    }
+  }
+
+  Future<void> setupInteractedMessage(BuildContext context) async {
+    // Get any messages which caused the application to open from a terminated state.
+    RemoteMessage? initialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
+    // If the message also contains a data property with a "type" of "message", navigate to a message screen.
+    if (initialMessage != null) {
+      if (context.mounted) {
+        _handleMessages(context, initialMessage);
+      }
+
+      // If i uncomment this it would say : Don't use 'BuildContext's across async gaps.Try rewriting the code to not reference the 'BuildContext'. And to solve this warning we must check to see if the context is mounted or not,which is done above.
+      // handleMessages(context, initialMessage);
+    }
+    // Also handle any interaction when the app is in the background via a Stream listener
+    FirebaseMessaging.onMessageOpenedApp.listen(
+      (event) => _handleMessages(context, event),
+    );
   }
 
   Future<void> showNotifications(RemoteMessage message) async {
     // Android Notification Channel
+
     AndroidNotificationChannel channel = const AndroidNotificationChannel(
         // high_importance_level is the value that i have used in the metadata parameter of androidmanifest file so i am using it as the channel id.
         "high_importance_level",
@@ -51,7 +84,9 @@ class NotificationServices {
         // If this is set to anyother than max then the notifications wouldnt be shown in the UI
         importance: Importance.max,
         description: 'Your Channel Description');
+
     // Android Notification Details
+
     AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
       channel.id.toString(),
@@ -81,14 +116,22 @@ class NotificationServices {
     });
   }
 
-  void firebaseInit() {
+  void firebaseInit(BuildContext context) {
+    // To handle messages while your application is in the foreground, listen to the onMessage stream.
+
     FirebaseMessaging.onMessage.listen((message) {
       if (kDebugMode) {
         print(message.notification!.title.toString());
         print(message.notification!.body.toString());
+        // This message.data is called the payload.You can send the extra data that is required. It stores value in the form of key and value
+        print(message.data.toString());
+        print(message.data['type']);
+        print(message.data['id']);
       }
       if (Platform.isAndroid) {
-        initLocalNotifications(message);
+        initLocalNotifications(context, message);
+        showNotifications(message);
+      } else {
         showNotifications(message);
       }
     });
