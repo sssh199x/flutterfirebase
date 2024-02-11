@@ -131,8 +131,9 @@ class NotificationServices {
       if (Platform.isAndroid) {
         initLocalNotifications(context, message);
         showNotifications(message);
-      } else {
-        showNotifications(message);
+      }
+      if (Platform.isIOS) {
+        foregroundMessageForIos();
       }
     });
   }
@@ -212,5 +213,13 @@ class NotificationServices {
   // Open app settings
   void _openAppSettings() {
     AppSettings.openAppSettings(type: AppSettingsType.notification);
+  }
+
+  void foregroundMessageForIos() async {
+    await messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 }
